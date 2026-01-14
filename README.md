@@ -1,217 +1,253 @@
-# Hard Hat Safety Detector
+# hardhat-safety-compliance
 
-A real-time computer vision system for construction site safety monitoring. Detects and tracks workers to identify PPE compliance violations, specifically hard hat usage.
+A hard hat detection system for construction site safety monitoring. Identifies PPE compliance violations by detecting whether workers are wearing hard hats in images and video footage.
+
+![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)
+![Python](https://img.shields.io/badge/Python-3.12.3-blue)
+![YOLOv11](https://img.shields.io/badge/YOLO-v11-green)
 
 ## Project Overview
 
-This system uses a custom-trained YOLOv11 model with ByteTrack object tracking to monitor construction workers across video footage. Rather than relying on frame-by-frame analysis which produces unreliable results, the system tracks individuals over time and uses statistical voting to determine compliance status. The goal is to provide construction site managers with automated safety monitoring that reduces false positives and accurately identifies genuine violations.
+This system detects and classifies construction workers as either **compliant** (wearing hard hat) or **violation** (not wearing hard hat) in uploaded images and videos. It demonstrates an end-to-end computer vision pipeline: custom model training, API development, web interface, and containerised deployment.
 
-### Key Features
+### What It Does
 
-- **Custom-Trained YOLOv11 Model**: Fine-tuned on 5,500+ images specifically for hard hat detection
-- **Temporal Tracking**: ByteTrack integration for consistent person identification across frames
-- **Statistical Classification**: Top-30 confidence voting system reduces false positives
-- **Smart Filtering**: Minimum duration thresholds (4 seconds) eliminate spurious detections
-- **Full-Stack Deployment**: FastAPI backend with web interface and Docker containerization
-- **Dual Input Support**: Handles both single images and video files
+- **Image analysis**: Upload a photo → Get instant detection with bounding boxes and violation counts
+- **Video analysis**: Upload video → Track individuals across frames → Output annotated video with per-person compliance status
 
-## Technical Architecture
+### Key Components
+
+- **Custom YOLOv11 Model**: Fine-tuned on construction dataset (5,500+ images) for two classes: head and helmet
+- **ByteTrack Integration**: Maintains consistent person IDs across video frames
+- **Confidence Voting System**: Uses top-30 most confident detections per track to determine final classification
+- **Temporal Filtering**: 4-second minimum visibility threshold filters unstable tracks
+- **FastAPI Backend**: Handles uploads, runs inference, returns results with detailed analytics
+- **Web Interface**: Drag-and-drop upload, timeline visualisation, per-person tracking details
+
+## Why These Methods?
+
+The model was trained on a relatively small dataset (~5,500 images) with limited angle variation. This creates accuracy challenges:
+
+- **ID jumping**: Tracking occasionally loses individuals and reassigns IDs as they move
+- **Classification flickering**: Model switches between "head" and "helmet" across consecutive frames
+- **Edge-of-frame noise**: Brief detections as people enter/exit the monitored area
+
+The engineering approach compensates for these model limitations:
+
+- **4-second minimum visibility**: Filters out ID jumps and transient detections caused by tracking instability
+- **Top-30 confidence voting**: Reduces impact of low-confidence misclassifications by weighting reliable detections more heavily
+- **Track-based analysis**: Aggregates evidence across frames rather than treating each frame independently
+
+With a larger, more varied dataset, these thresholds could be relaxed. For now, they ensure consistent outputs despite model imperfections.
+
+## Technical Stack
 
 ```
-Frontend (JavaScript) → FastAPI → YOLOv11 + ByteTrack → Results + Annotated Media
+Frontend (Vanilla JS) → FastAPI (Port 8000) → YOLOv11 + ByteTrack → Results + Annotated Media
 ```
 
-**Backend**: FastAPI server running YOLOv11 inference with custom tracking logic  
-**Model**: YOLOv11-small fine-tuned on combined dataset (RoboFlow + custom CVAT annotations)  
-**Tracking**: ByteTrack for temporal consistency across frames  
-**Deployment**: Dockerized application for consistent cross-platform execution
+**Model**: YOLOv11-small (custom trained, 2 classes: head, helmet)  
+**Tracking**: ByteTrack for temporal person identification  
+**Backend**: FastAPI with custom TrackClassifier for statistical voting  
+**Frontend**: Web interface with timeline visualisation and detailed analytics  
+**Deployment**: Docker container (Python 3.12.3, includes ffmpeg for video encoding)
 
 ## Performance Metrics
 
-| Metric | Value | Note |
-|--------|-------|------|
-| Precision | 94.5% | Final epoch performance |
+| Metric | Value | Context |
+|--------|-------|---------|
+| Precision | 94.5% | Final epoch (85 epochs) |
 | Recall | 91.0% | Detection coverage |
-| mAP@0.5 | 95.7% | High-confidence detections |
-| mAP@0.5:0.95 | 64.3% | Stricter IoU thresholds |
+| mAP@0.5 | 95.7% | IoU threshold 0.5 |
+| mAP@0.5:0.95 | 64.3% | Stricter IoU range |
 
-**Important Context**: The base dataset uses test images for validation (no separate validation split), which may inflate these metrics slightly. Real-world performance is expected to be lower, particularly at distance or unusual angles.
+**Caveat**: The base dataset reuses test images for validation (no separate validation split), which may inflate these metrics. Real-world performance on novel footage is lower, particularly for unusual viewing angles or occlusion scenarios.
 
-## Getting Started
-
-### Prerequisites
-
-- Docker and Docker Compose (recommended)
-- OR Python 3.12.3 with pip
+## Installation & Usage
 
 ### Quick Start with Docker
 
 ```bash
-# Clone the repository
-git clone https://github.com/yourusername/hardhat-safety-detector.git
-cd hardhat-safety-detector
+# Clone repository
+git clone https://github.com/jamess005/hardhat-safety-compliance.git
+cd hardhat-safety-compliance
 
-# Build and run
-docker-compose up --build
+# Build and run backend
+docker build -t hardhat-detector .
+docker run -p 8000:8000 hardhat-detector
 
-# Access the application
-# Frontend: http://localhost:8080
-# API: http://localhost:8000
+# Serve frontend (separate terminal)
+cd frontend
+python -m http.server 8080
+
+# Access: http://localhost:8080
 ```
 
 ### Manual Installation
 
 ```bash
 # Install dependencies
-pip install -r requirements.txt
+pip install -r requirements-runtime.txt
 
-# Run the backend
+# Run backend
 cd backend
-python main.py
+uvicorn main:app --host 0.0.0.0 --port 8000
 
-# Serve the frontend (separate terminal)
+# Serve frontend
 cd frontend
 python -m http.server 8080
 ```
 
-## Usage
+### Usage
 
-### Image Analysis
-1. Upload a single image through the web interface
-2. System detects all visible people and classifies helmet usage
-3. Returns annotated image with bounding boxes and compliance statistics
+**Images**: Upload → Instant detection with bounding boxes and counts  
+**Videos**: Upload → Processing with tracking → Annotated output with timeline and per-person details
 
-### Video Analysis
-1. Upload video file (MP4, AVI, MOV supported)
-2. System processes video with object tracking enabled
-3. Tracks individuals across frames for minimum 4 seconds
-4. Classifies each person using top-30 confidence voting
-5. Returns annotated video with per-person timeline and violation summary
+The system returns:
+- Violation count (people without hard hats)
+- Compliant count (people with hard hats)
+- Per-person tracking data (duration visible, confidence, observations)
+- Timeline showing when violations occurred
+- System quality metrics (tracking stability, overall confidence)
 
-### API Endpoints
+## Training Details
+
+**Model**: YOLOv11-small  
+**Hardware**: AMD Radeon RX 7800 XT  
+**Training Time**: 85 epochs × 57s ≈ 1.3 hours  
+
+**Hyperparameters**:
+- Image size: 416×416
+- Batch size: 64
+- Learning rate: 0.007 (cosine decay)
+- Classes: 2 (head, helmet)
+
+**Dataset**:
+- Base: RoboFlow construction dataset (~5,269 training images)
+- Custom augmentation: 236 CVAT-annotated images (~1,100 head annotations)
+- **Purpose of custom data**: Base dataset performed poorly on workers with long hair. Custom annotations specifically targeted this edge case with varied angles and occlusion patterns.
+
+## API Endpoints
 
 ```bash
 # Image analysis
 POST /image
 Content-Type: multipart/form-data
-Body: file (image file)
+Body: file (image)
 
-# Video analysis
+Response: {
+  "annotated_image": "annotated_filename.jpg",
+  "violations": 2,
+  "compliant": 3,
+  "total_detections": 5
+}
+
+# Video analysis  
 POST /video
 Content-Type: multipart/form-data
-Body: file (video file)
+Body: file (video)
+
+Response: {
+  "annotated_video": "annotated_filename.mp4",
+  "violations": 2,
+  "compliant": 3,
+  "total_detections": 5,
+  "personnel_details": [...],      // Per-person tracking data
+  "violation_periods": [...],       // Temporal violation windows
+  "video_duration": 45.2,
+  "overall_confidence": 0.87,
+  "filtered_tracks": 3              // Tracks below 4s threshold
+}
 ```
 
-## Technical Implementation
+## Model Limitations
 
-### The Classification Strategy
+The model struggles with:
 
-The biggest challenge in helmet detection isn't the initial detection - it's handling inconsistent frame-by-frame results. A person might be correctly classified in one frame, misclassified in the next, then correct again. Simple majority voting fails because low-confidence detections carry equal weight.
+- **Overhead angles**: Detection degrades when camera is directly above workers (helmet shape obscured)
+- **Partial occlusion**: Lower accuracy when face is covered (masks, scarves, looking away)
+- **Non-safety headwear**: May misclassify caps or other headwear as helmets
 
-**Solution**: Top-30 sum voting
-1. Collect all detections for each tracked person
-2. Sort by confidence, take top 30 most confident predictions
-3. Sum confidence scores for each class (helmet vs. no-helmet)
-4. Classify based on highest sum with hysteresis for edge cases
+These limitations stem from the dataset having relatively few examples of these edge cases. The dataset architecture also creates constraints:
 
-This approach dramatically reduces false violations while maintaining high recall.
+**Bounding box design**: Training labels include both helmet AND face in a single box. This means:
+- Model requires visible face to confidently classify "helmet"
+- Struggles when face isn't clearly visible even if helmet is present
+- Correctly avoids false positives from ground helmets, but creates brittleness for unusual angles
 
-### Tracking Implementation
+A production system would use separate detection classes with spatial association logic to overcome these limitations.
 
-Uses ByteTrack for person re-identification across frames. Key parameters:
-- **Minimum appearance**: 4 seconds on screen (eliminates edge-of-frame errors)
-- **Confidence threshold**: 0.5 for individual detections
-- **Average confidence filter**: 0.5 minimum across all detections for a track
+## What This Demonstrates
 
-### Training Details
+This portfolio piece shows practical ML engineering skills:
 
-**Model**: YOLOv11-small  
-**Hardware**: AMD Radeon RX 7800 XT  
-**Training Time**: ~85 epochs × 57s = 1.3 hours  
-**Image Size**: 416×416  
-**Batch Size**: 64  
-**Learning Rate**: 0.007 (with cosine decay)
+1. **Custom model training**: Fine-tuned YOLOv11 for specific use case (construction PPE detection)
+2. **Identifying weaknesses**: Recognised poor performance on long hair through testing, targeted this with custom annotations
+3. **Engineering workarounds**: Built tracking and voting systems to produce reliable outputs despite model limitations
+4. **Full-stack implementation**: Model → FastAPI → Web interface → Docker deployment
+5. **Production considerations**: Video encoding compatibility, error handling, detailed logging, frontend analytics
 
-**Dataset Composition**:
-- Base: RoboFlow hard hat dataset (~5,269 training images)
-- Augmentation: Custom CVAT-annotated dataset (~236 images, 1,100 annotations)
-- Focus: People with long hair (identified weakness in base dataset)
+This represents a simulated real-world CV deployment: object detection for a specific domain, with practical engineering to handle imperfect training data.
 
-## What I Learned
+## Future Improvements
 
-This project pushed me to think beyond model accuracy metrics and focus on production reliability:
+### If Deploying to Production
 
-1. **Data quality matters more than quantity**: The base dataset had 5,000+ images but struggled with long hair. Adding 236 targeted examples solved the issue.
+- **Separate detection pipeline**: Train distinct detectors for person body, head region, and helmet with association logic rather than single two-class model
+- **Expanded dataset**: More overhead angles, occlusion scenarios, varied lighting, diverse helmet types
+- **Real-time streaming**: Support for live camera feeds (current system processes uploaded files)
+- **Alert integration**: Immediate notifications when violations detected (SMS, email, dashboard)
+- **Historical analytics**: Compliance trend analysis across time periods and sites
 
-2. **Frame-by-frame analysis is insufficient**: Object tracking + temporal voting transformed an unreliable system into a deployable one.
+### Architecture Changes
 
-3. **Engineering around model limitations**: When the model struggles (distant workers, overhead angles), good filtering and thresholding can maintain system reliability.
+Current approach: Single model outputs two classes (head, helmet) where helmet labels include the face region.
 
-4. **End-to-end thinking**: Training a good model is 30% of the work. API design, error handling, video encoding compatibility, and deployment infrastructure are equally important.
+Production approach would use three-class detection with spatial association:
 
-## Known Limitations
+1. **Detect all objects**: Train YOLO to detect person (body), head, helmet as separate classes
+2. **Associate detections**: 
+   - For each person box → find head boxes inside it (IoU > 0.5)
+   - For each head → check if any helmet box overlaps it (IoU > 0.3)
+   - If helmet overlaps head → compliant; if not → violation
+3. **Benefits**: Handles face occlusion (can detect head without clear face), doesn't require helmet to include face, correctly ignores helmets on ground (no head overlap)
 
-### Model Limitations
-- **Overhead angles**: Struggles with directly top-down views where helmet shape is obscured
-- **Partial occlusion**: Difficulty detecting helmets when face is covered (masks, scarves)
-- **Distance**: Performance degrades for workers >30m from camera
-- **Other headwear**: May misclassify caps or non-safety headwear as helmets
-
-### Dataset Limitations
-The training data has helmet bounding boxes that include both the helmet and face, which creates two issues:
-1. **Conservative detection**: Model hesitates to classify as "helmet" without seeing a clear face
-2. **Stray helmet problem**: Correctly avoids false positives from helmets laying on the ground, but may miss legitimate detections
-
-**Future Improvement**: Separate head and helmet detection with association logic would solve both issues.
-
-## Future Enhancements
-
-- [ ] Separate head/helmet detection model with association rules
-- [ ] Expanded dataset with more angles and occlusion examples  
-- [ ] Multi-PPE detection (safety vests, gloves, boots)
-- [ ] Real-time streaming support for live camera feeds
-- [ ] Alert system integration for immediate violation notification
-- [ ] Historical compliance analytics and reporting
+This separates detection (YOLO's job) from compliance logic (post-processing) rather than forcing the model to learn the wearing relationship.
 
 ## Project Structure
 
 ```
-hardhat-safety-detector/
+hardhat-safety-compliance/
 ├── backend/
-│   ├── main.py              # FastAPI application
-│   ├── tracking.py          # TrackClassifier + voting logic
-│   ├── config.py            # Configuration management
-│   └── models/              # YOLOv11 model weights
+│   ├── main.py              # FastAPI application & endpoints
+│   ├── tracking.py          # TrackClassifier (voting & filtering)
+│   ├── config.py            # Environment configuration
+│   └── models/              # YOLOv11 weights (best.pt)
 ├── frontend/
 │   ├── index.html           # Web interface
-│   ├── script.js            # Frontend logic
+│   ├── script.js            # Upload, API calls, visualisation
 │   └── style.css            # Styling
-├── Dockerfile               # Container definition
-├── docker-compose.yml       # Multi-container orchestration
-├── requirements.txt         # Python dependencies
+├── Dockerfile               # Backend container (Python 3.12.3)
+├── requirements-runtime.txt # Production dependencies
 └── README.md
 ```
 
-## Contributing
+## Licence
 
-This is a portfolio project, but feedback and suggestions are welcome. Feel free to open issues for bugs or improvement ideas.
+This project is licensed under the MIT Licence - see [LICENSE](LICENSE) for details.
 
-## License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## Acknowledgments
+## Acknowledgements
 
 - **Base Dataset**: RoboFlow Hard Hat Workers dataset
-- **Custom Annotations**: CVAT for manual labeling
-- **Model**: Ultralytics YOLOv11
-- **Tracking**: ByteTrack implementation
+- **Custom Annotations**: CVAT for manual labelling workflow
+- **Model Framework**: Ultralytics YOLOv11
+- **Tracking Algorithm**: ByteTrack implementation
 
 ## Contact
 
-**James** - Aspiring ML Engineer  
-[GitHub](https://github.com/jamess005) | [LinkedIn](https://www.linkedin.com/in/jamesscott005/)
+**James Scott** - ML Engineering Portfolio  
+[GitHub](https://github.com/jamess005) | [LinkedIn](https://linkedin.com/in/jamesscott005)
 
 ---
 
-*This project demonstrates practical ML engineering skills: identifying real-world problems, iterating on solutions through data and architecture changes, and building deployable systems. It represents my first complete computer vision portfolio piece.*
+*This project demonstrates end-to-end computer vision system development: custom model training, practical engineering to handle data limitations, and deployment-ready implementation with FastAPI and Docker.*
