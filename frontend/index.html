@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SafetyVision AI | Helmet Detection System</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@300;400;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <!-- Hero Section -->
+        <header class="hero">
+            <div class="hero-badge">COMPUTER VISION</div>
+            <h1 class="hero-title">
+                <span class="title-main">SafetyVision</span>
+                <span class="title-sub">AI Helmet Detection</span>
+            </h1>
+            <p class="hero-description">
+                Real-time safety compliance monitoring powered by machine learning.
+                Detect helmet violations instantly from images or video streams.
+            </p>
+        </header>
+
+        <!-- Upload Section -->
+        <section class="upload-section" id="uploadSection">
+            <div class="upload-header">
+                <h2>Analyse Media</h2>
+                <p>Upload an image or video to detect safety helmet compliance</p>
+            </div>
+            
+            <div class="upload-zone" id="uploadZone">
+                <input type="file" id="fileInput" accept="image/*,video/*" hidden>
+                <div class="upload-content">
+                    <svg class="upload-icon" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                        <polyline points="17 8 12 3 7 8"></polyline>
+                        <line x1="12" y1="3" x2="12" y2="15"></line>
+                    </svg>
+                    <h3>Drop file here or click to upload</h3>
+                    <p class="upload-hint">Supports JPG, JPEG, PNG, MP4, MOV • Max 50MB</p>
+                </div>
+            </div>
+
+            <div class="preview-container" id="previewContainer" style="display: none;">
+                <div class="preview-header">
+                    <span class="preview-label">Preview</span>
+                    <button class="btn-secondary" id="clearBtn">Clear</button>
+                </div>
+                <div class="preview-media" id="previewMedia"></div>
+                <button class="btn-primary" id="analyzeBtn">
+                    <span>Analyze for Violations</span>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                        <polyline points="13 17 18 12 13 7"></polyline>
+                        <polyline points="6 17 11 12 6 7"></polyline>
+                    </svg>
+                </button>
+            </div>
+        </section>
+
+        <!-- Processing State -->
+        <section class="processing-section" id="processingSection" style="display: none;">
+            <div class="processing-content">
+                <div class="spinner"></div>
+                <h3>Analyzing Safety Compliance...</h3>
+                <p>Running detection model on uploaded media</p>
+            </div>
+        </section>
+
+        <!-- Results Section -->
+        <section class="results-section" id="resultsSection" style="display: none;">
+            <div class="results-header">
+                <h2>Detection Results</h2>
+                <button class="btn-secondary" id="newAnalysisBtn">New Analysis</button>
+            </div>
+
+            <div class="results-grid">
+                <!-- Stats Cards -->
+                <div class="stats-container">
+                    <div class="stat-card violation">
+                        <div class="stat-icon">⚠️</div>
+                        <div class="stat-content">
+                            <div class="stat-value" id="violationCount">0</div>
+                            <div class="stat-label">Violations Detected</div>
+                        </div>
+                    </div>
+                    <div class="stat-card compliant">
+                        <div class="stat-icon">✓</div>
+                        <div class="stat-content">
+                            <div class="stat-value" id="compliantCount">0</div>
+                            <div class="stat-label">Compliant Workers</div>
+                        </div>
+                    </div>
+                    <div class="stat-card total">
+                        <div class="stat-icon">👷</div>
+                        <div class="stat-content">
+                            <div class="stat-value" id="totalCount">0</div>
+                            <div class="stat-label">Total Detected</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Annotated Output -->
+                <div class="output-panel">
+                    <div class="alert-badge" id="alertBadge" style="display: none;">
+                        <span class="alert-icon">⚠️</span>
+                        <span class="alert-text">VIOLATION ACTIVE</span>
+                    </div>
+                    <h3 class="panel-title">Annotated Output</h3>
+                    <div class="output-media" id="outputMedia">
+                        <!-- Annotated media will be displayed here -->
+                    </div>
+                    <div class="timeline-container">
+                        <div class="timeline-bar" id="timelineBar" style="display: none;">
+                            <!-- Timeline segments will be dynamically generated -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Safety Summary -->
+                <div class="summary-panel">
+                    <h3 class="panel-title">Safety Analysis</h3>
+                    <div class="summary-content" id="summaryContent">
+                        <!-- Summary will be populated here -->
+                    </div>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <!-- Cache-bust to ensure latest frontend is loaded -->
+    <script src="script.js?v=5"></script>
+</body>
+</html>

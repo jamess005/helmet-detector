@@ -1,0 +1,28 @@
+# Python / environment
+__pycache__/
+*.pyc
+.venv/
+.env
+
+# Runtime-generated data
+backend/uploads/
+backend/annotated/
+
+# Datasets (not part of repo)
+data/
+face-data/
+hardhat-data/
+
+# YOLO training runs (fully excluded)
+runs/
+models/
+
+# Model weights
+*.pt
+!backend/models/combined-v11/weights/best.pt
+
+# OS / editor junk
+.DS_Store
+.vscode/
+.idea/
+*.log
